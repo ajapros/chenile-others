@@ -13,6 +13,7 @@
     "secure":false,
     "input": "org.chenile.filewatch.test.service.FooModel",
     "fileWatchId": "foo",
+     "eventSubscribedTo": ["foo"],
     "output": "",
     "params":
     [

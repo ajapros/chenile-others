@@ -8,12 +8,10 @@ import java.nio.file.StandardCopyOption;
 import java.util.Properties;
 
 import org.chenile.core.context.ChenileExchange;
+import org.chenile.utils.stream.Looper;
 import org.chenile.core.entrypoint.ChenileEntryPoint;
-import org.chenile.core.model.SubscriberVO;
 import org.chenile.filewatch.errorcodes.ErrorCodes;
 import org.chenile.filewatch.model.FileWatchDefinition;
-import org.chenile.filewatch.reader.CsvReader;
-import org.chenile.filewatch.reader.JsonReader;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -40,7 +38,9 @@ public class FileProcessor {
 	
 	@Autowired private ChenileEntryPoint chenileEntryPoint;
 	@Autowired private FileWatchEventLogger eventLogger;
+	@Autowired private Looper looper;
 	private Path processedDir;
+
 	
 	public void processFile(FileWatchDefinition fileWatchDefinition, Path fileDiscovered,
 			Path processedDir) {
@@ -58,8 +58,16 @@ public class FileProcessor {
 					+ ACTUAL_FILE_NAME + " or " + ACTUAL_FILE_ENCODING);
 			return;
 		}
-		Path recordsFile = fileDiscovered.getParent().resolve(headers.getProperty(ACTUAL_FILE_NAME));	
-		invokeServicesForFile(fileWatchDefinition,recordsFile,headers);
+		Path recordsFile = fileDiscovered.getParent().resolve(headers.getProperty(ACTUAL_FILE_NAME));
+
+		try (InputStream inputStream = Files.newInputStream(recordsFile)) {
+			looper.loop(fileWatchDefinition.getFileWatchId(),inputStream,(String)headers.get(ACTUAL_FILE_ENCODING),
+					headers, fileWatchDefinition.getRecordClass());
+		} catch (Exception e) {
+			eventLogger.logError(null,ErrorCodes.CANNOT_PROCESS_FILE.getSubError(),
+					"Unable to process file " + recordsFile, e);
+            throw new RuntimeException(e);
+        }
 		moveFilesToProcessed(fileDiscovered,recordsFile);
 	}
 	
@@ -99,55 +107,6 @@ public class FileProcessor {
         			"Cannot read Header file " + file, ex);
         	return null;
         }	
-	}
-	
-	private void invokeServicesForFile(FileWatchDefinition fileWatchDefinition,
-			Path file, Properties headers) {
-		try {
-			for (Object o: fileReader(fileWatchDefinition,file,(String)headers.get(ACTUAL_FILE_ENCODING))) {
-				invokeServicesPerRecord(fileWatchDefinition,o,headers);
-			}
-		} catch (Exception e) {
-			eventLogger.logError(null,ErrorCodes.CANNOT_PROCESS_FILE.getSubError(), 
-					"Error in reading file " + file, e);
-			e.printStackTrace();
-		}		 
-	}
-	
-	private Iterable<Object> fileReader(FileWatchDefinition fileWatchDefinition, 
-			Path file,String encodingType) throws Exception{
-		switch(encodingType.toUpperCase()) {
-		case "CSV":
-			return new CsvReader(file, fileWatchDefinition.getRecordClass());
-		case "JSON":
-			return new JsonReader(file,fileWatchDefinition.getRecordClass());
-		}
-		eventLogger.logError(null,ErrorCodes.INVALID_ENCODING_TYPE.getSubError(), 
-				"Header has invalid encoding type " + encodingType);
-		return null;
-	}
-
-	private void invokeServicesPerRecord(FileWatchDefinition fileWatchDefinition,
-			Object record,Properties headers){
-		// Find all the subscriptions for the given file watch definition and invoke them one by one
-		for (SubscriberVO subscriber: fileWatchDefinition.getSubscribers()) {
-			// read the file and for each record invoke this combination of service and 
-			// operation definitions
-			ChenileExchange exchange = new ChenileExchange();
-			exchange.setServiceDefinition(subscriber.serviceDefinition);
-			exchange.setOperationDefinition(subscriber.operationDefinition);
-			copyHeadersToExchange(exchange,headers);
-			exchange.setBody(record);
-			try {
-				chenileEntryPoint.execute(exchange);
-				eventLogger.logSuccess(exchange.getResponse(),headers.getProperty("batchId"));
-			}catch(Throwable t) {
-				eventLogger.logError(headers.getProperty("batchId"),ErrorCodes.ERROR_IN_SERVICE.getSubError(),
-						"Error in invoking the service " + subscriber.serviceDefinition.getId() +"."
-						+ subscriber.operationDefinition.getName(),
-						t);
-			}
-		}
 	}
 
 	private void copyHeadersToExchange(ChenileExchange exchange, Properties headers) {
