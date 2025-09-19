@@ -12,11 +12,16 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
 
 @Configuration
-@SpringBootApplication(scanBasePackages = { "org.chenile.configuration" })
+@SpringBootApplication(scanBasePackages = { "org.chenile" })
 @PropertySource("classpath:org/chenile/cache/test/TestChenileCache.properties")
 @ActiveProfiles("unittest")
+@EntityScan({"org.chenile"})
+@EnableJpaRepositories(basePackages = {"org.chenile"})
 public class SpringConfig extends SpringBootServletInitializer{
 	
 	@Autowired ProxyBuilder proxyBuilder;

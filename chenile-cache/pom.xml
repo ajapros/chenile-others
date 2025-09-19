@@ -26,11 +26,21 @@
         <dependency>
     		<groupId>com.hazelcast</groupId>
 		    <artifactId>hazelcast</artifactId>
-		</dependency>
+			</dependency>
 		
-		<dependency>
+			<dependency>
     		<groupId>com.hazelcast</groupId>
 		    <artifactId>hazelcast-client</artifactId>
+			</dependency>
+			<dependency>
+				<groupId>com.h2database</groupId>
+				<artifactId>h2</artifactId>
+				<scope>test</scope>
+		</dependency>
+			<dependency>
+				<groupId>org.chenile</groupId>
+				<artifactId>service-registry-service</artifactId>
+				<scope>test</scope>
 		</dependency>
         
         <dependency>
