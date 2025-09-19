@@ -11,6 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>chenile-scheduler</artifactId>
+		<name>chenile-scheduler</name>
 
     <dependencies>
     	<dependency>

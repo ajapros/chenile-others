@@ -11,6 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>chenile-cache</artifactId>
+		<name>chenile-cache</name>
 
     <dependencies>
     	<dependency>
