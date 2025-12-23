@@ -36,7 +36,8 @@ public class CacheBuilder {
 		MapConfig mapCfg = new MapConfig();
 		mapCfg.setName(cc.getId());
 		mapCfg.setBackupCount(cc.getBackupCount());
-		mapCfg.getMaxSizeConfig().setSize(cc.getMaxSize());
+
+		//mapCfg.getMaxSizeConfig().setSize(cc.getMaxSize());
 		mapCfg.setTimeToLiveSeconds(cc.getTimeToLiveInSeconds());
 		config.addMapConfig(mapCfg);
 		System.out.println("Configuring Cache ID: " + cc.getId());

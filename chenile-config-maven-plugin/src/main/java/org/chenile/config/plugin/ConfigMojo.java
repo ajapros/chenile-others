@@ -24,9 +24,9 @@ import org.apache.maven.project.MavenProjectHelper;
 import org.chenile.base.response.GenericResponse;
 import org.chenile.core.model.ChenileServiceDefinition;
 import org.chenile.core.service.Info;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Generate a Chenile Service Registry configuration from 

@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hazelcast.replicatedmap.ReplicatedMap;
 import org.chenile.cache.model.CacheKey;
 import org.chenile.core.context.ChenileExchange;
 import org.chenile.core.interceptors.BaseChenileInterceptor;
@@ -15,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import org.chenile.cache.Cacheable;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ReplicatedMap;
 
 /**
  * Caches an operation return value using the service name, operation name and the parameters
