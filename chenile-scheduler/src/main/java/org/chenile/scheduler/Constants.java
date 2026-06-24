@@ -9,5 +9,8 @@ public abstract class Constants {
     public static final String SERVICE_DEFINITION = "service.definition";
     public static final String OPERATION_DEFINITION = "operation.definition";
     public static final String CHENILE_ENTRY_POINT = "chenile.entry.point";
+    public static final String SCHEDULER_INFO = "scheduler.info";
+    public static final String TASK_DISPATCHER = "task.dispatcher";
+    public static final String EXECUTION_ID = "scheduler.execution.id";
     public static final String BODY = "body";
 }

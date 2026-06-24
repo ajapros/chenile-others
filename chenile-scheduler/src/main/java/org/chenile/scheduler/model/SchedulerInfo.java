@@ -14,6 +14,13 @@ public class SchedulerInfo {
 	public String jobDescription;
 	public String triggerName;
 	private String triggerGroup;
+	private String launcher;
+	private String worker;
+	private Integer retryCount;
+	private Integer timeoutSeconds;
+	private SchedulerConcurrencyPolicy concurrencyPolicy;
+	private Map<String,String> jobLabels;
+	private Map<String,String> jobAnnotations;
 	
 	public Map<String,Object> headers;
 	public String payload;
@@ -65,5 +72,77 @@ public class SchedulerInfo {
 
 	public void setHeaders(Map<String,Object> headers) {
 		this.headers = headers;
+	}
+
+	public String getLauncher() {
+		return launcher;
+	}
+
+	public void setLauncher(String launcher) {
+		this.launcher = normalize(launcher);
+	}
+
+	public void setBackend(String backend) {
+		setLauncher(backend);
+	}
+
+	public String getBackend() {
+		return launcher;
+	}
+
+	public String getWorker() {
+		return worker;
+	}
+
+	public void setWorker(String worker) {
+		this.worker = worker;
+	}
+
+	public Integer getRetryCount() {
+		return retryCount;
+	}
+
+	public void setRetryCount(Integer retryCount) {
+		this.retryCount = retryCount;
+	}
+
+	public Integer getTimeoutSeconds() {
+		return timeoutSeconds;
+	}
+
+	public void setTimeoutSeconds(Integer timeoutSeconds) {
+		this.timeoutSeconds = timeoutSeconds;
+	}
+
+	public SchedulerConcurrencyPolicy getConcurrencyPolicy() {
+		return concurrencyPolicy;
+	}
+
+	public void setConcurrencyPolicy(SchedulerConcurrencyPolicy concurrencyPolicy) {
+		this.concurrencyPolicy = concurrencyPolicy;
+	}
+
+	public void setConcurrencyPolicy(String concurrencyPolicy) {
+		this.concurrencyPolicy = SchedulerConcurrencyPolicy.from(concurrencyPolicy);
+	}
+
+	public Map<String, String> getJobLabels() {
+		return jobLabels;
+	}
+
+	public void setJobLabels(Map<String, String> jobLabels) {
+		this.jobLabels = jobLabels;
+	}
+
+	public Map<String, String> getJobAnnotations() {
+		return jobAnnotations;
+	}
+
+	public void setJobAnnotations(Map<String, String> jobAnnotations) {
+		this.jobAnnotations = jobAnnotations;
+	}
+
+	private String normalize(String value) {
+		return value == null ? null : value.trim().toLowerCase().replace('_', '-');
 	}
 }

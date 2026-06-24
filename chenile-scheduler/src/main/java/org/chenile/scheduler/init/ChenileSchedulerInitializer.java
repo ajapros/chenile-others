@@ -32,7 +32,7 @@ public class ChenileSchedulerInitializer extends BaseInitializer<SchedulerInfo> 
 		Map<String, SchedulerInfo> map = getExtensionMap(Constants.EXTENSION);
 
 		if (map.get(schedulerInfo.getJobName()) != null){
-			throw new ConfigurationException(ErrorCodes.MISCONFIGURATION_DUPLICATE_JOB_NAME.getSubError(),
+			throw new ConfigurationException(String.valueOf(ErrorCodes.MISCONFIGURATION_DUPLICATE_JOB_NAME.getSubError()),
 					new Object[] {schedulerInfo.getJobName()});
 		}
 		logger.debug("Scheduler: Found Job Name {}",schedulerInfo.getJobName());

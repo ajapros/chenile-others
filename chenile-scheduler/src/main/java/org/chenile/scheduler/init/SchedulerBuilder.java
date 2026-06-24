@@ -8,6 +8,7 @@ import org.chenile.core.model.OperationDefinition;
 import org.chenile.core.model.SubscriberVO;
 import org.chenile.scheduler.Constants;
 import org.chenile.scheduler.jobs.ScheduledJob;
+import org.chenile.scheduler.launcher.ScheduledTaskDispatcher;
 import org.chenile.scheduler.model.SchedulerInfo;
 import org.quartz.*;
 import org.slf4j.Logger;
@@ -40,6 +41,8 @@ public class SchedulerBuilder implements DisposableBean{
 	private ChenileEntryPoint chenileEntryPoint;
 	@Autowired
 	private ChenileExchangeBuilder chenileExchangeBuilder;
+	@Autowired
+	private ScheduledTaskDispatcher scheduledTaskDispatcher;
 	
 	public SchedulerBuilder() {
 		super();
@@ -50,6 +53,7 @@ public class SchedulerBuilder implements DisposableBean{
 	public void build() throws Exception {
 		Map<String, SchedulerInfo> map = (Map<String,SchedulerInfo>)
 				chenileConfiguration.getOtherExtensions().get(Constants.EXTENSION);
+		if (map == null || map.isEmpty()) return;
 
 		map.forEach((name,schedulerInfo)->{
 					try{
@@ -76,6 +80,8 @@ public class SchedulerBuilder implements DisposableBean{
 		jdm.put(Constants.SERVICE_DEFINITION, serviceDefinition);
 		jdm.put(Constants.OPERATION_DEFINITION, operationDefinition);
 		jdm.put(Constants.CHENILE_ENTRY_POINT, chenileEntryPoint);
+		jdm.put(Constants.SCHEDULER_INFO, schedulerInfo);
+		jdm.put(Constants.TASK_DISPATCHER, scheduledTaskDispatcher);
 		if (schedulerInfo.getHeaders() != null) {
             jdm.putAll(schedulerInfo.getHeaders());
 		}

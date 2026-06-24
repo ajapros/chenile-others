@@ -1,5 +1,7 @@
 package org.chenile.scheduler.test;
 
+import org.chenile.scheduler.store.SchedulerExecutionStore;
+import org.chenile.scheduler.test.support.MemorySchedulerExecutionStore;
 import org.chenile.scheduler.test.service.FooService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -24,5 +26,8 @@ public class SpringConfig extends SpringBootServletInitializer{
 		return new FooService();
 	}
 
-}
+	@Bean public SchedulerExecutionStore schedulerExecutionStore() {
+		return new MemorySchedulerExecutionStore();
+	}
 
+}
