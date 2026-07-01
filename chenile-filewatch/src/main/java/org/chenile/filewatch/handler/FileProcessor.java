@@ -110,7 +110,7 @@ public class FileProcessor {
 	}
 
 	private void copyHeadersToExchange(ChenileExchange exchange, Properties headers) {
-		headers.forEach((key,value) -> exchange.setHeader((String)key, value));	
+		headers.forEach((key,v) -> exchange.setHeader((String)key, v));
 	}
 
 }

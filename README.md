@@ -12,6 +12,56 @@ Chenile avoids the need to write repetitive code. It encourages modular coding b
 In addition to creating REST services, Chenile services can also be used to create event processors, 
 schedulers (with quartz), a file watcher etc. without the need for rewriting the code. 
 
+## Chenile Scheduler
+
+`chenile-scheduler` is a lightweight cron scheduler for Chenile services. It keeps Quartz as the trigger engine and dispatches each due execution to a named `ScheduledTaskLauncher`. The framework ships the generic contracts, local Chenile execution, status tracking contracts, and a JDBC execution store. Queue, cloud, memory, and Kubernetes launchers are application/test extensions.
+
+The scheduler reads JSON definitions from `chenile.scheduler.json.package`. Existing definitions continue to work:
+
+```json
+{
+  "serviceName": "fooService",
+  "operationName": "schedule",
+  "cronSchedule": "0/1 * * * * ? *",
+  "jobName": "Test_Job",
+  "jobDescription": "Test_Job_Description",
+  "triggerGroup": "Test trigger group1",
+  "triggerName": "testTrigger1"
+}
+```
+
+Enhanced definitions can choose a launcher and execution policy:
+
+```json
+{
+  "serviceName": "reportService",
+  "operationName": "run",
+  "cronSchedule": "0 2 * * * ?",
+  "jobName": "daily-report",
+  "launcher": "worker",
+  "worker": "report-worker",
+  "payload": "{ \"report_type\": \"daily\" }",
+  "retryCount": 3,
+  "timeoutSeconds": 300
+}
+```
+
+Useful properties:
+
+```properties
+chenile.scheduler.launcher.default=local
+```
+
+Applications must provide a `SchedulerExecutionStore` bean. For persistent execution history, set `chenile.scheduler.store.type=jdbc`, configure a datasource, and initialize the table using `chenile-scheduler-schema.sql`.
+
+Run scheduler tests from this module:
+
+```bash
+mvn test
+```
+
+The scheduler tests demonstrate extension configuration. A test-only memory store is used for local scenarios, and a test-only Kubernetes launcher uses Testcontainers K3s plus Fabric8 to create a real `batch/v1 Job` in an isolated Kubernetes API. The framework code itself has no Kubernetes dependency.
+
 Chenile has a state machine and an orchestration engine.  
 
 The orchestration engine is internally used by Chenile to provide an interception framework that helps in 
@@ -25,5 +75,3 @@ Chenile also is integrated with [keycloak](https://www.keycloak.org/) for securi
 Finally, Chenile ships with its own code generators to ease the development of micro services. 
 Please see [Code Generation Repository](https://github.com/rajakolluru/chenile-gen) for more information 
 about the code generator.
-
-
