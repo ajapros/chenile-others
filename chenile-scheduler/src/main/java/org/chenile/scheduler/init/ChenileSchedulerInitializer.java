@@ -12,10 +12,10 @@ import org.springframework.core.io.Resource;
 import java.util.Map;
 
 /**
- * Picks up all the file watch resources and registers all of them in
+ * Picks up all the schedulers and registers all of them in
  * {@link ChenileConfiguration} ChenileConfiguration provides for extension
  * points for registering new type of resources. This class uses the extension
- * point to register the file watches
+ * point to register the schedulers.
  * 
  * @author Raja Shankar Kolluru
  *
