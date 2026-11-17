@@ -87,17 +87,18 @@ Java class with no JPA:
 | `enabled` | disabled definitions are kept but not scheduled |
 | `description` | free text |
 
-Definitions come from **sources**, all producing the same model:
+Definitions come from three places, all producing the same model and all held by one class, `ChenileScheduler`
+(decided during phase 2: no source interface, registry or separate definition service):
 
-| Source | Where | How |
+| From | Where | How |
 | --- | --- | --- |
-| JSON | chenile-scheduler | `*-schedule.json` resources, loaded at startup into a `JsonSchedulerDefinitionSource`. This replaces `ChenileSchedulerInitializer` and keeps the existing `chenile.scheduler.json.package` setting. |
-| Code | chenile-scheduler | `SchedulerDefinitionService.save(definition)` against an in-memory source |
-| Database | `chenile-scheduler-db` (new, chenile-others) | a JPA entity `SchedulerDefinitionEntity extends BaseJpaEntity`, its repository, and the REST API (today's crontab controller, renamed). Includes tenant checks, enable/disable, and validation (cron expression, timezone, `x-` headers). |
+| JSON | chenile-scheduler | resources matched by `chenile.scheduler.json.package`, one definition per file, loaded by `ChenileScheduler` at startup. Replaces `ChenileSchedulerInitializer`. |
+| Code | chenile-scheduler | `chenileScheduler.schedule(definition)`; `unschedule(id)` removes it |
+| Database | `chenile-scheduler-db` (new, chenile-others) | a JPA entity `SchedulerDefinitionEntity extends BaseJpaEntity`, its repository, and the REST API (today's crontab controller, renamed). It saves rows and calls `chenileScheduler.schedule` after commit, and loads all rows at startup. Includes tenant checks, enable/disable, and validation. |
 
-**How sources combine.**
-- **One registry:** all sources feed one `SchedulerDefinitionRegistry`, which the engine reads.
-- **Ids must be unique across sources.** A JSON and a database definition with the same id is a startup error.
+**Rules.**
+- **Ids must be unique.** Two JSON files with the same id fail startup; the database module refuses an id that is
+  already scheduled from JSON.
 - **Changes are scheduled straight away:** a database change is scheduled after the transaction commits, as today.
 - **Code definitions in a cluster:** they exist only on the node that created them. Code that schedules must run on
   every node, for example at startup. A fire for a definition this node doesn't know is logged and skipped.
@@ -105,8 +106,8 @@ Definitions come from **sources**, all producing the same model:
 ### 4. One engine: chenile-scheduler
 
 - **The job:** one Quartz job type, `SchedulerJob`. Its job data holds only the definition id; it looks up this
-  node's `SchedulerEngine` in the Quartz scheduler context.
-- **Firing:** the engine reads the definition and builds the `TriggerInput`:
+  node's `ChenileScheduler` in the Quartz scheduler context.
+- **Firing:** `ChenileScheduler` reads the definition and builds the `TriggerInput`:
   - event id, payload, headers and tenant from the definition;
   - source `CRON`;
   - idempotency key `schedule:<id>:<scheduledFireTime>`.
@@ -158,7 +159,7 @@ headers above.
 ### 7. What subscribers take on
 
 - **"Don't overlap with the previous run."** Only the subscriber knows when its work ends, so this belongs there.
-  A small helper in chenile-scheduler, `EventLocks` (a lock per event and tenant, in memory or in the database), can
+  A small helper, `EventLocks` (a lock per event and tenant, in memory or in the database), can
   provide it where needed.
 - **Retries and timeouts:** handled by the trigger layer with trigger-service (outbox retry, then DEAD), or by the
   subscriber.
@@ -170,7 +171,7 @@ headers above.
 | Module | Repository | Contents |
 | --- | --- | --- |
 | `chenile-trigger` (new) | chenile-core | `TriggerService`, `TriggerInput`, `TriggerResult`, `TriggerStatus` and `Trigger` (moved from trigger-api, packages `org.chenile.trigger.*` kept), plus `DirectTriggerService` |
-| `chenile-scheduler` | chenile-others | `SchedulerDefinition`, the JSON and in-memory sources, the registry, the engine and `SchedulerJob`, `EventLocks`, the `chenile-quartz` changelog |
+| `chenile-scheduler` | chenile-others | `SchedulerDefinition`, `ChenileScheduler`, `SchedulerJob` and the `chenile-quartz` changelog |
 | `chenile-scheduler-db` (new) | chenile-others | the entity, repository and REST API, a Liquibase changelog for the definition table, and Cucumber tests |
 | `chenile-filewatch` | chenile-others | fires through `TriggerService` |
 | `trigger-service` | chenile-process-management | `EventTriggerService` and `DispatchTriggerCommand` on the outbox; depends on `chenile-trigger` |
@@ -217,7 +218,7 @@ Maven coordinates change for anything that moves. The Java packages `org.chenile
 | Phase | Repository | Work | Acceptance |
 | --- | --- | --- | --- |
 | 1. Trigger API | chenile-core | Create `chenile-trigger`: move the trigger model and interface, add `DirectTriggerService`, the deduplication cache and the standard header constants. | Cucumber: a trigger fired from code raises the event; a duplicate key is ignored; status reported; headers set. |
-| 2. Scheduler engine | chenile-others | `SchedulerDefinition`, the JSON and in-memory sources, the registry, the engine and `SchedulerJob` firing through `TriggerService`, `EventLocks`. Remove launchers, the execution store, `SchedulerInfo` and the Kubernetes test support. | Cucumber: a JSON schedule fires event X and a subscriber runs; code schedule; disabled schedule; duplicate id across sources fails at startup; replace-if-exists on restart; job data holds only the id. |
+| 2. Scheduler engine | chenile-others | `SchedulerDefinition`, `ChenileScheduler` (JSON and code definitions) and `SchedulerJob` firing through `TriggerService`. Remove launchers, the execution store, `SchedulerInfo` and the Kubernetes test support. | Cucumber: a JSON schedule fires event X and a subscriber runs; code schedule; disabled schedule; duplicate id across sources fails at startup; replace-if-exists on restart; job data holds only the id. |
 | 3. Database schedules | chenile-others | `chenile-scheduler-db`: the entity, repository, REST API and Liquibase changelog, ported from crontab-service with tenant checks and validation. | crontab-service's Cucumber feature ported (save, list, disable, delete, tenant isolation, invalid input). |
 | 4. File watch | chenile-others | `eventId` on `FileWatchDefinition`; records fired through `TriggerService` with the file-based idempotency key; remove `FileWatchSubscribersInitializer`. | Cucumber: a file fires one event per record; reprocessing the same file fires nothing new; a changed file fires again; subscriber failure handling with `DirectTriggerService`. |
 | 5. Process management | chenile-process-management | `trigger-service` depends on `chenile-trigger`; remove `trigger-api`, `crontab-api` and `crontab-service`; process-admin-server uses the scheduler modules; the console's Schedules screens. | The existing trigger and outbox tests; admin-server tests; console tests. |
@@ -239,10 +240,16 @@ Phases 5 and 6 follow in the same release.
   process-management's `trigger-api` is now an empty module that depends on `chenile-trigger`, and `EventTriggerService`
   reuses `TriggerRequests`. Durable triggers now also carry
   `x-chenile-event-source`.
+- **Phase 2 (done, 2026-11-17).** chenile-scheduler now has three classes: `SchedulerDefinition`, `ChenileScheduler`
+  (holds the definitions, loads JSON at startup, `schedule`/`unschedule`, fires through `TriggerService`) and
+  `SchedulerJob`. Launchers, the execution store and its schema, `SchedulerInfo`, the initializer, `SchedulerBuilder`,
+  `ScheduledJob`, the Kubernetes test support and the old tests are removed. `EventLocks` is **deferred** until a
+  subscriber needs it. crontab-service's stub `SchedulerExecutionStore` bean was dropped so process management still
+  builds until phase 5. `chenile-samples/scheduler-sample` is built on the removed model and is rewritten in phase 6.
 
 ## Open questions
 
 1. **Deduplication cache in `DirectTriggerService`:** resolved in phase 1 as 24 hours and 100,000 keys, set with
    `chenile.trigger.dedupe.retention` (ISO-8601, default `PT24H`) and `chenile.trigger.dedupe.max-entries`.
-2. **`EventLocks` in the database:** should the database variant reuse the outbox's claim tables when trigger-service
+2. **`EventLocks` (deferred) in the database:** should the database variant reuse the outbox's claim tables when trigger-service
    is present, or have its own table? Proposed: its own small table in chenile-scheduler-db.

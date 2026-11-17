@@ -1,0 +1,7 @@
+{
+  "id": "paused",
+  "cronExpression": "* * * * * ?",
+  "eventId": "tick",
+  "payload": "{\"note\": \"never\"}",
+  "enabled": false
+}

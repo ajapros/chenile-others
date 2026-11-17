@@ -1,0 +1,10 @@
+{
+  "id": "ticker",
+  "name": "Ticks every second",
+  "cronExpression": "* * * * * ?",
+  "eventId": "tick",
+  "payload": "{\"note\": \"from-json\"}",
+  "tenant": "t1",
+  "headers": { "x-custom": "c" },
+  "description": "Fires the tick event every second"
+}
