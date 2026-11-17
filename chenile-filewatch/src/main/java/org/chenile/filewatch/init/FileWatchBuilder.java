@@ -6,11 +6,14 @@ import org.chenile.core.model.ChenileConfiguration;
 import org.chenile.filewatch.handler.FileWatcherExecutorService;
 import org.chenile.filewatch.model.FileWatchDefinition;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 
 /**
  * Builds the file watcher module. 
  * Takes all the  file watch IDs from every {@link FileWatchDefinition} and registers them 
- * against a file watcher. Starts the {@link FileWatcherExecutorService}
+ * against a file watcher. Starts the {@link FileWatcherExecutorService} once the application is
+ * ready. Records fire the definition's event; operations subscribe to it like any other event.
  * @author Raja Shankar Kolluru
  *
  */
@@ -20,6 +23,7 @@ public class FileWatchBuilder {
 	private ChenileConfiguration chenileConfiguration;
 	@Autowired FileWatcherExecutorService fileWatcherExecutorService;
 	
+	@EventListener(ApplicationReadyEvent.class)
 	public void build() throws Exception {
 		@SuppressWarnings("unchecked")
 		Map<String,FileWatchDefinition> map = (Map<String,FileWatchDefinition>)

@@ -1,25 +1,23 @@
 package org.chenile.filewatch.model;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.chenile.core.model.ModuleAware;
-import org.chenile.core.model.SubscriberVO;
 
 public class FileWatchDefinition implements ModuleAware{
 	@Override
 	public String toString() {
-		return "FileWatchDefinition [fileWatchId=" + fileWatchId + ", originatingModuleName=" + originatingModuleName
+		return "FileWatchDefinition [fileWatchId=" + fileWatchId + ", eventId=" + getEventId() + ", originatingModuleName=" + originatingModuleName
 				+ ", recordClass=" + recordClass + ", dirToWatch=" + dirToWatch 
 				+ "]";
 	}
 	public static final String EXTENSION = "fileWatch"; // register as a filewatch extension for chenile 
 	
 	private String fileWatchId;
+	/** The event each record fires; subscribers subscribe to it. Defaults to the file watch id. */
+	private String eventId;
 	private String originatingModuleName;
 	/**
-	 * The class to which each of the record in the file belongs. This class must match
-	 * the parameter arguments for each of the subscribers to this FileWatchDefinition
+	 * The class each record in the file is read as. Subscribers receive it converted to their own
+	 * body type.
 	 */
 	private Class<?> recordClass;
 	public String getFileWatchId() {
@@ -28,20 +26,19 @@ public class FileWatchDefinition implements ModuleAware{
 	public void setFileWatchId(String fileWatchId) {
 		this.fileWatchId = fileWatchId;
 	}
+	public String getEventId() {
+		return eventId == null || eventId.isBlank() ? fileWatchId : eventId;
+	}
+	public void setEventId(String eventId) {
+		this.eventId = eventId;
+	}
 	public String getDirToWatch() {
 		return dirToWatch;
 	}
 	public void setDirToWatch(String dirToWatch) {
 		this.dirToWatch = dirToWatch;
 	}
-	
-	
-	public Set<SubscriberVO> getSubscribers() {
-		return subscribers;
-	}
-	public void addSubscriber(SubscriberVO subscriber) {
-		this.subscribers.add(subscriber);
-	}
+
 	public String getOriginatingModuleName() {
 		return originatingModuleName;
 	}
@@ -55,7 +52,6 @@ public class FileWatchDefinition implements ModuleAware{
 		this.recordClass = recordClass;
 	}
 	private String dirToWatch;
-	private Set<SubscriberVO> subscribers = new HashSet<>();
 	
 	private String templateName;
 	private String template;

@@ -260,6 +260,28 @@ Phases 5 and 6 follow in the same release.
   - Error codes E573 (not found in this tenant) and E574 (tenant mismatch) join E570–E572 in chenile-scheduler.
   - Tests: crontab-service's Cucumber feature ported (save, list, change cron, disable, delete, invalid input, tenant
     isolation), plus JUnit for the startup load and the fire-time lookup.
+- **Phase 4 (done, 2026-11-17).** chenile-filewatch fires through `TriggerService`:
+  - `FileWatchDefinition` has `eventId` (defaults to `fileWatchId`); its subscriber set is gone, and so is
+    `FileWatchSubscribersInitializer`. `FileWatchBuilder` now starts watching on `ApplicationReadyEvent` itself.
+    Operations subscribe with `eventSubscribedTo`; an operation's `fileWatchId` is no longer used.
+  - `FileProcessor` (constructor-injected) computes the file's SHA-256, then triggers each record with source `FILE`,
+    key `file:<fileWatchId>:<file name>:<sha256>:<record index>`, the header file's `x-` properties as headers, its
+    other properties in the trigger context, and the `x-chenile-file-watch-id`, `x-chenile-file-name` and
+    `x-chenile-record-index` headers. A trigger failure moves the files to the error folder.
+  - Tests: Cucumber (one event per record with headers; the same file again fires nothing new; a changed file fires
+    again; a subscriber failure goes to the error folder) replaces the JUnit `TestFileWatchFeatures`; `FileProcessorTest`
+    covers keys, headers, a custom event id and failures.
+- **Phase 5 (done, 2026-11-17).** chenile-process-management:
+  - `trigger-api`, `crontab-api` and `crontab-service` are removed; `trigger-service` and `process-service` depend on
+    `chenile-trigger`, and `process-service` optionally on `chenile-scheduler-db`.
+  - The management API's crontab endpoints become `GET|POST /process-management/api/schedules` and
+    `PUT /schedules/{id}` (a ProcessCreate schedule saved through `ScheduleService`); `/executions` filters by
+    `scheduleId` (the `x-chenile-schedule-id` header); `/info` reports `schedulesAvailable`.
+  - process-admin-server uses `chenile-scheduler-db` (scan `org.chenile.scheduler.db`) and its Liquibase master
+    includes the `chenile-scheduler-db` changelog.
+  - The console's "Cron triggers" tab is now "Schedules", against the new endpoints and fields (`eventId`,
+    `payload`).
+  - The old `chenile_crontab` table is no longer used; existing rows are not migrated (no backward compatibility).
 
 ## Open questions
 

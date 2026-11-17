@@ -11,7 +11,8 @@ import org.chenile.filewatch.handler.FileWatchEventLogger;
 import org.chenile.filewatch.handler.FileWatcherExecutorService;
 import org.chenile.filewatch.init.ChenileFileWatchInitializer;
 import org.chenile.filewatch.init.FileWatchBuilder;
-import org.chenile.filewatch.init.FileWatchSubscribersInitializer;
+import org.chenile.trigger.TriggerService;
+import org.chenile.utils.stream.Looper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -27,11 +28,6 @@ public class FileWatchConfiguration {
     @Bean
     public ChenileFileWatchInitializer fileWatchInitializer(FileWatchProperties properties){
         return new ChenileFileWatchInitializer(properties);
-    }
-    
-    @Bean 
-    public FileWatchSubscribersInitializer fileWatchSubscribersInitializer() {
-    	return new FileWatchSubscribersInitializer();
     }
     
     @Profile("!unittest")
@@ -52,8 +48,9 @@ public class FileWatchConfiguration {
     	return  new FileWatchBuilder();
     }
     
-    @Bean FileProcessor fileProcessor() {
-    	return new FileProcessor();
+    @Bean FileProcessor fileProcessor(TriggerService triggerService, FileWatchEventLogger fileWatchEventLogger,
+    		Looper<?> looper) {
+    	return new FileProcessor(triggerService, fileWatchEventLogger, looper);
     }
     
     @Bean FileWatchEventLogger fileWatchEventLogger() {

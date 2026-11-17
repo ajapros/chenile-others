@@ -1,28 +1,20 @@
 {
   "name": "fooService",
   "id": "fooService",
-  "operations":
-  [
-   {
-    "name": "saveFoo",
-    "auditable": "false",
-    "url": "/saveFoo",
-    "httpMethod": "GET",
-    "produces": "JSON",
-    "consumes": "JSON",
-    "secure":false,
-    "input": "org.chenile.filewatch.test.service.FooModel",
-    "fileWatchId": "foo",
-     "eventSubscribedTo": ["foo"],
-    "output": "",
-    "params":
-    [
-      {
-        "name": "model",
-        "type": "BODY",
-        "description": "saves the model object"
-      }
-    ]
-  }
+  "operations": [
+    {
+      "name": "saveFoo",
+      "url": "/saveFoo",
+      "httpMethod": "POST",
+      "produces": "JSON",
+      "consumes": "JSON",
+      "secure": false,
+      "input": "org.chenile.filewatch.test.service.FooModel",
+      "eventSubscribedTo": ["foo"],
+      "params": [
+        { "name": "model", "type": "BODY", "description": "one record of the file" },
+        { "name": "headers", "type": "HEADERS", "paramClass": "java.util.Map", "description": "every header of the event" }
+      ]
+    }
   ]
 }
