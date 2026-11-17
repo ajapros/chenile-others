@@ -2,6 +2,7 @@ package org.chenile.scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -66,6 +67,24 @@ class ChenileSchedulerTest {
     scheduler.afterPropertiesSet();
     scheduler.fire("unknown", new Date(), new Date());
     verifyNoInteractions(triggers);
+  }
+
+  @Test
+  void aFireReadsTheLookupFirstAndSkipsDisabledDefinitions() throws Exception {
+    var scheduler = new ChenileScheduler(quartz, triggers, new Resource[] {json("nightly")});
+    scheduler.afterPropertiesSet();
+    SchedulerDefinition fresh = new SchedulerDefinition();
+    fresh.id = "nightly";
+    fresh.eventId = "changedEvent";
+    scheduler.lookUpDefinitionsWith(id -> "nightly".equals(id) ? fresh : null);
+    scheduler.fire("nightly", new Date(), new Date());
+    ArgumentCaptor<TriggerInput> input = ArgumentCaptor.forClass(TriggerInput.class);
+    verify(triggers).trigger(input.capture());
+    assertEquals("changedEvent", input.getValue().eventId);
+
+    fresh.enabled = false;
+    scheduler.fire("nightly", new Date(), new Date());
+    verify(triggers).trigger(any(TriggerInput.class));
   }
 
   private static Resource json(String id) {

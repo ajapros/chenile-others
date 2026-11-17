@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import org.chenile.base.exception.BadRequestException;
 import org.chenile.base.exception.ConfigurationException;
 import org.chenile.scheduler.errorcodes.ErrorCodes;
@@ -59,6 +60,7 @@ public class ChenileScheduler implements InitializingBean {
   private final Resource[] jsonResources;
   private final ObjectMapper mapper = new ObjectMapper();
   private final Map<String, SchedulerDefinition> definitions = new ConcurrentHashMap<>();
+  private volatile Function<String, SchedulerDefinition> lookup = id -> null;
 
   public ChenileScheduler(Scheduler quartz, TriggerService triggers, Resource[] jsonResources) {
     this.quartz = quartz;
@@ -139,11 +141,25 @@ public class ChenileScheduler implements InitializingBean {
     return List.copyOf(definitions.values());
   }
 
+  /**
+   * Where a fire looks first for its definition, before this node's own. chenile-scheduler-db
+   * passes a database lookup here: in a cluster, a schedule saved on one node can fire on another,
+   * and the database holds the current version.
+   */
+  public void lookUpDefinitionsWith(Function<String, SchedulerDefinition> lookup) {
+    this.lookup = lookup == null ? id -> null : lookup;
+  }
+
   /** Raises the definition's event. Called by {@link SchedulerJob} on the node Quartz picked. */
   public void fire(String id, Date scheduledFireTime, Date fireTime) {
-    SchedulerDefinition definition = definitions.get(id);
+    SchedulerDefinition definition = lookup.apply(id);
+    if (definition == null) definition = definitions.get(id);
     if (definition == null) {
       logger.warn("Schedule {} is not defined on this node; skipping this fire", id);
+      return;
+    }
+    if (!definition.enabled) {
+      logger.warn("Schedule {} is disabled; skipping this fire", id);
       return;
     }
     TriggerInput input = new TriggerInput();
@@ -171,7 +187,11 @@ public class ChenileScheduler implements InitializingBean {
     }
   }
 
-  private void validate(SchedulerDefinition definition) {
+  /**
+   * Checks a definition without scheduling it: id, eventId, cron expression, timezone and {@code
+   * x-} headers. Throws a {@link BadRequestException} (E571). An empty timezone becomes UTC.
+   */
+  public void validate(SchedulerDefinition definition) {
     if (definition == null) invalid(null, "a definition is required");
     if (definition.id == null || definition.id.isBlank()) invalid(null, "id is required");
     if (definition.eventId == null || definition.eventId.isBlank())

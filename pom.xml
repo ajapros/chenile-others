@@ -10,6 +10,7 @@
     <modules>
         <module>chenile-filewatch</module>
         <module>chenile-scheduler</module>
+        <module>chenile-scheduler-db</module>
         <module>chenile-cache</module>
         <module>chenile-config-maven-plugin</module>
     </modules>

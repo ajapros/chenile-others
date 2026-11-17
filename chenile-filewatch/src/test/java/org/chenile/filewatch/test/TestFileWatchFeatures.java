@@ -124,7 +124,12 @@ public class TestFileWatchFeatures {
     	}).allMatch(bool -> bool == Boolean.TRUE));
     }
     
-    private void checkIfFilesMovedToProcessedFolder() {
+    private void checkIfFilesMovedToProcessedFolder() throws InterruptedException {
+    	// The last record is delivered before the processor moves its files, so wait for the move.
+    	long deadline = System.currentTimeMillis() + 5000;
+    	while (!allMoved() && System.currentTimeMillis() < deadline) {
+    		Thread.sleep(50);
+    	}
     	assertFalse(Files.exists(csvtest));
     	assertFalse(Files.exists(csvtestactual));
     	assertFalse(Files.exists(jsontest));
@@ -134,6 +139,11 @@ public class TestFileWatchFeatures {
     	assertTrue(Files.exists(processedCsvtestactual));
     	assertTrue(Files.exists(processedJsontest));
     	assertTrue(Files.exists(processedJsontestactual));
+    }
+
+    private boolean allMoved() {
+    	return Files.exists(processedCsvtest) && Files.exists(processedCsvtestactual)
+    			&& Files.exists(processedJsontest) && Files.exists(processedJsontestactual);
     }
 
 }

@@ -246,6 +246,20 @@ Phases 5 and 6 follow in the same release.
   `ScheduledJob`, the Kubernetes test support and the old tests are removed. `EventLocks` is **deferred** until a
   subscriber needs it. crontab-service's stub `SchedulerExecutionStore` bean was dropped so process management still
   builds until phase 5. `chenile-samples/scheduler-sample` is built on the removed model and is rewritten in phase 6.
+- **Phase 3 (done, 2026-11-17).** New module `chenile-scheduler-db`:
+  - `SchedulerDefinitionEntity` (table `chenile_schedule`, headers in `chenile_schedule_header`, name unique per
+    tenant), `SchedulerDefinitionRepository`, `ScheduleService` and `ScheduleController` (`POST|GET /schedule`,
+    `GET|DELETE /schedule/{id}`), wired by `ChenileSchedulerDbConfiguration`; the host scans the entity and
+    repository. Liquibase: `db/changelog/chenile-scheduler-db.changelog.xml`, context `chenile-scheduler-db`.
+  - `ScheduleService` validates with `ChenileScheduler.validate` plus a required name, enforces the caller's tenant,
+    refuses an id already scheduled from JSON or code, and schedules after commit. At startup it schedules every
+    stored row (an id also defined in JSON fails startup).
+  - **Added to `ChenileScheduler`:** `lookUpDefinitionsWith(Function)`. A fire reads the database first, so a schedule
+    saved on one node fires with its current definition on any node of a clustered Quartz. A disabled definition is
+    skipped at fire time. `validate` is now public.
+  - Error codes E573 (not found in this tenant) and E574 (tenant mismatch) join E570–E572 in chenile-scheduler.
+  - Tests: crontab-service's Cucumber feature ported (save, list, change cron, disable, delete, invalid input, tenant
+    isolation), plus JUnit for the startup load and the fire-time lookup.
 
 ## Open questions
 
