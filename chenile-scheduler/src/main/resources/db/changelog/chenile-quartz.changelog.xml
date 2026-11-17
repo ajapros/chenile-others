@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Optional Liquibase changelog for Quartz's JDBC job store (the QRTZ_* tables), needed only when a host runs Quartz
+  clustered (spring.quartz.job-store-type=jdbc, org.quartz.jobStore.isClustered=true). Opt-in via the
+  "chenile-quartz" context.
+
+  It applies the PostgreSQL DDL that ships inside the Quartz jar (org/quartz/impl/jdbcjobstore/tables_postgres.sql),
+  so the tables always match the Quartz version on the class path. The script begins with DROP TABLE IF EXISTS, so
+  the changeset runs only when the tables don't exist yet. It runs outside a transaction because the script ends with
+  COMMIT.
+-->
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="chenile-quartz-tables" author="chenile-scheduler" context="chenile-quartz" dbms="postgresql"
+               runInTransaction="false">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="qrtz_job_details"/></not>
+        </preConditions>
+        <sqlFile path="org/quartz/impl/jdbcjobstore/tables_postgres.sql" relativeToChangelogFile="false"
+                 splitStatements="true" stripComments="true"/>
+    </changeSet>
+</databaseChangeLog>

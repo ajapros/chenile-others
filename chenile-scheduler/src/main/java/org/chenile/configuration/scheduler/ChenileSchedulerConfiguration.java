@@ -14,10 +14,6 @@ import org.chenile.scheduler.init.SchedulerBuilder;
 import org.chenile.scheduler.service.SchedulerExecutionService;
 import org.chenile.scheduler.store.JdbcSchedulerExecutionStore;
 import org.chenile.scheduler.store.SchedulerExecutionStore;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SchedulerFactory;
-import org.quartz.impl.StdSchedulerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -35,11 +31,9 @@ public class ChenileSchedulerConfiguration {
 	@Value("${chenile.scheduler.launcher.default:${chenile.scheduler.backend.default:local}}")
 	private String defaultLauncher;
 
-	@Bean public Scheduler quartzScheduler() throws SchedulerException{
-		SchedulerFactory sf = new StdSchedulerFactory();
-		return sf.getScheduler();
-	}
-	
+	// The Quartz Scheduler bean ("quartzScheduler") comes from Spring Boot's Quartz auto-configuration, configured
+	// through spring.quartz.* (in memory by default; JDBC and clustered by configuration).
+
 	@Bean public SchedulerBuilder schedulerBuilder() {
 		return new SchedulerBuilder();
 	}
