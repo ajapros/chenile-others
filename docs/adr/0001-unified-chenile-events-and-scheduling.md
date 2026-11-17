@@ -282,6 +282,33 @@ Phases 5 and 6 follow in the same release.
   - The console's "Cron triggers" tab is now "Schedules", against the new endpoints and fields (`eventId`,
     `payload`).
   - The old `chenile_crontab` table is no longer used; existing rows are not migrated (no backward compatibility).
+- **Phase 6 (done, 2026-11-17).** Generator and samples:
+  - **bp-process-management** (JGen): the `cronSpec` input is now `scheduleSpec`; the generator parses it into its
+    own `ScheduleSpec` model and validates it in `ProcessDefinitionConfigurator.validateSchedules` (name, tenant,
+    unique names, Quartz cron, timezone, `ProcessCreate` only, payload against `inputFields`). JGen no longer depends
+    on `crontab-api` or `crontab-service`, so it still builds against released Chenile 2.1.35. Generated projects
+    get `schedules.json`, depend on `chenile-scheduler-db`, scan `org.chenile.scheduler.db`, and the bootstrap seeds
+    missing schedules through `ScheduleService` in each schedule's tenant.
+  - **Release gate:** generated process projects now need Chenile 2.1.36. Release this JGen change only after
+    Chenile 2.1.36 is released, together with `config.json`'s `chenileVersion` bump to 2.1.36.
+  - **p1** mirrors the templates (bootstrap, configuration, `schedules.json`, pom, scans, README) and moves to
+    Chenile 2.1.36.
+  - **scheduler-sample** is rewritten on the event model and Chenile 2.1.36: a JSON schedule fires
+    `scheduledReport`, the report operation subscribes with `@EventsSubscribedTo`, and enqueues idempotent work for
+    the workers (KEDA/CronJob manifests unchanged). The JDBC execution store, launchers and Fabric8 test code are
+    gone; beans are created in `SchedulerSampleConfiguration`; a Cucumber feature covers firing, idempotency and a
+    worker run.
+- **Phase 7 (done, 2026-11-17).** Docs and skills:
+  - chenile.org: new concept 17, "Everything but HTTP is an event" (the Chenile event is internal; files, schedules,
+    topic messages, `/trigger` and code are mapped onto it), in the Concepts menu, footer and home page; the
+    entry-points and trigger-framework developer pages rewritten; concept 05 and 07, architecture, repositories data,
+    process pages, the JGen blueprint page and the 2.1.36 release notes (with upgrade notes) updated.
+  - Repos: the chenile-others README, chenile-core `docs/events.md`, and chenile-process-management's README and
+    `docs/` (process-management, deployment, UI, diagrams, Temporal comparison, blueprint spec, schematic).
+  - Skills (chenile-claude-plugins 1.0.2): chenile-framework-knowledge, chenile-architecture,
+    chenile-process-management and chenile-jgen.
+  - Not changed: the JGen site (jgen.chenile.org) still documents the released JGen with `cronSpec`; update it when
+    the JGen release with `scheduleSpec` ships.
 
 ## Open questions
 

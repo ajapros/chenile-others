@@ -1,77 +1,78 @@
 # chenile-others
-This contains the source code of all some entry points for Chenile
+
+The event sources for Chenile, plus a few integrations.
 
 # About chenile
 
-Chenile is an open source framework for creating Micro services using Java and Spring Boot. 
+Chenile is an open source framework for creating microservices using Java and Spring Boot.
 Please check the details out at https://chenile.org
 
 It provides an interception framework to decouple functional and non-functional requirements.
-Chenile avoids the need to write repetitive code. It encourages modular coding best practices. 
+Chenile avoids the need to write repetitive code. It encourages modular coding best practices.
 
-In addition to creating REST services, Chenile services can also be used to create event processors, 
-schedulers (with quartz), a file watcher etc. without the need for rewriting the code. 
+## Everything but HTTP is an event
 
-## Chenile Scheduler
+HTTP calls a Chenile operation directly. Everything else raises an internal **Chenile event**, and every operation
+that subscribes to it (`@EventsSubscribedTo("x")`, or `"eventSubscribedTo": ["x"]` in a JSON service definition)
+runs through the normal interceptor pipeline. The modules here map external happenings onto Chenile events:
 
-`chenile-scheduler` is a lightweight cron scheduler for Chenile services. It keeps Quartz as the trigger engine and dispatches each due execution to a named `ScheduledTaskLauncher`. The framework ships the generic contracts, local Chenile execution, status tracking contracts, and a JDBC execution store. Queue, cloud, memory, and Kubernetes launchers are application/test extensions.
+| Module | External event | Chenile event |
+|---|---|---|
+| `chenile-scheduler` | a cron schedule becomes due | the schedule's `eventId` |
+| `chenile-scheduler-db` | the same, for schedules kept in the database | the schedule's `eventId` |
+| `chenile-filewatch` | a file lands in a watched folder | the file watch's `eventId` (defaults to its `fileWatchId`), once per record |
 
-The scheduler reads JSON definitions from `chenile.scheduler.json.package`. Existing definitions continue to work:
+Both raise their events through `TriggerService` (module `chenile-trigger` in chenile-core). Its default,
+`DirectTriggerService`, raises the event at once; process management's `trigger-service` replaces it with a durable,
+retrying implementation. Messages on a topic (chenile-messaging) raise events too. The design is recorded in
+[ADR 0001](docs/adr/0001-unified-chenile-events-and-scheduling.md); the user guide is
+https://chenile.org/concepts/17-events/ and https://chenile.org/developer/entry-points/.
 
-```json
-{
-  "serviceName": "fooService",
-  "operationName": "schedule",
-  "cronSchedule": "0/1 * * * * ? *",
-  "jobName": "Test_Job",
-  "jobDescription": "Test_Job_Description",
-  "triggerGroup": "Test trigger group1",
-  "triggerName": "testTrigger1"
-}
-```
+## chenile-scheduler
 
-Enhanced definitions can choose a launcher and execution policy:
+One `SchedulerDefinition` model (id, name, cronExpression with seconds, timezone, eventId, payload as JSON text,
+x- headers, tenant, enabled, description), held by `ChenileScheduler`:
 
-```json
-{
-  "serviceName": "reportService",
-  "operationName": "run",
-  "cronSchedule": "0 2 * * * ?",
-  "jobName": "daily-report",
-  "launcher": "worker",
-  "worker": "report-worker",
-  "payload": "{ \"report_type\": \"daily\" }",
-  "retryCount": 3,
-  "timeoutSeconds": 300
-}
-```
+- **JSON**, one definition per file, found through `chenile.scheduler.json.package`:
 
-Useful properties:
+  ```json
+  {
+    "id": "daily-report",
+    "cronExpression": "0 0 2 * * ?",
+    "eventId": "dailyReport",
+    "payload": "{ \"reportType\": \"daily\" }"
+  }
+  ```
+- **Code**: `chenileScheduler.schedule(definition)` and `unschedule(id)`.
 
-```properties
-chenile.scheduler.launcher.default=local
-```
+Each fire calls `TriggerService` with source `CRON`, the key `schedule:<id>:<scheduled fire time>` and the headers
+`x-chenile-schedule-id`, `x-chenile-scheduled-fire-time` and `x-chenile-fire-time`.
 
-Applications must provide a `SchedulerExecutionStore` bean. For persistent execution history, set `chenile.scheduler.store.type=jdbc`, configure a datasource, and initialize the table using `chenile-scheduler-schema.sql`.
+Quartz is Spring Boot's (`spring.quartz.*`): in memory by default, clustered with the JDBC job store
+(`spring.quartz.job-store-type=jdbc`, `org.quartz.jobStore.isClustered=true`). The Quartz job holds only the
+definition id. `db/changelog/chenile-quartz.changelog.xml` (context `chenile-quartz`) creates the `QRTZ_*` tables
+on PostgreSQL.
 
-Run scheduler tests from this module:
+## chenile-scheduler-db
 
-```bash
-mvn test
-```
+Schedules kept in the database: `SchedulerDefinitionEntity` (table `chenile_schedule`), `POST|GET /schedule` and
+`GET|DELETE /schedule/{id}`, scoped to the caller's tenant and scheduled after commit. At startup every stored
+schedule is scheduled, and a fire on any node reads the current definition from the database. The host scans
+`org.chenile.scheduler.db` for the entity and repository. Liquibase: `db/changelog/chenile-scheduler-db.changelog.xml`,
+context `chenile-scheduler-db`.
 
-The scheduler tests demonstrate extension configuration. A test-only memory store is used for local scenarios, and a test-only Kubernetes launcher uses Testcontainers K3s plus Fabric8 to create a real `batch/v1 Job` in an isolated Kubernetes API. The framework code itself has no Kubernetes dependency.
+## chenile-filewatch
 
-Chenile has a state machine and an orchestration engine.  
+Watches folders for completed files (a `.header` file containing `last.property` marks completion) and raises the
+definition's event once per record, with source `FILE`, the key
+`file:<fileWatchId>:<file name>:<sha256 of the file>:<record index>` and the headers `x-chenile-file-watch-id`,
+`x-chenile-file-name` and `x-chenile-record-index`. The header file's `x-` properties become event headers; the
+others go into the trigger context.
 
-The orchestration engine is internally used by Chenile to provide an interception framework that helps in 
-disinter-mediating traffic irrespective of the incoming protocol (HTTP, message etc.)
+## Also here
 
-Hence Chenile also serves like an IN-VM message bus. Chenile also facilitates easy swagger documentation 
-(using Spring doc). 
-Chenile allows the development of Cucumber based BDD tests with most of the plumbing already in place.
-Chenile also is integrated with [keycloak](https://www.keycloak.org/) for security. 
+- `chenile-cache`: caching support for Chenile services.
+- `chenile-config-maven-plugin`: see its README.
 
-Finally, Chenile ships with its own code generators to ease the development of micro services. 
-Please see [Code Generation Repository](https://github.com/rajakolluru/chenile-gen) for more information 
-about the code generator.
+Chenile ships with its own code generator, JGen. See the
+[code generation repository](https://github.com/rajakolluru/chenile-gen).
